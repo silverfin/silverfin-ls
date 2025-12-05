@@ -49,7 +49,7 @@ export class TranslationProvider {
 
     // Extract and sort locale declarations
     const locales: { key: string; value: string }[] = [];
-    
+
     for (const declaration of localeDeclarations) {
       const keyNode = declaration.childForFieldName("key");
       const valueNode = declaration.childForFieldName("value");
