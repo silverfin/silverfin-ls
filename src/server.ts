@@ -13,6 +13,7 @@ import {
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
+import { URI } from "vscode-uri";
 import { Logger } from "./logger";
 import { HoverProvider } from "./lspCapabilities/hoverProvider";
 import { DefinitionProvider } from "./lspCapabilities/definitionProvider";
@@ -73,7 +74,7 @@ export class LiquidLanguageServer {
       // Determine workspace root
       // #NOTE: we may want to set workspaceRoot differently (validating folder structure)
       if (params.workspaceFolders) {
-        this.workspaceRoot = params.workspaceFolders[0].uri;
+        this.workspaceRoot = URI.parse(params.workspaceFolders[0].uri).fsPath;
         this.logger.info(`Workspace root from folders: ${this.workspaceRoot}`);
       }
 
