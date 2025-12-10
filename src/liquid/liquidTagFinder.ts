@@ -89,6 +89,7 @@ export class LiquidTagFinder {
   /**
    * Find all nodes of specific types before a position.
    * Uses optimized query service (parses 20 files instead of 222 sections).
+   * @returns Array of matching nodes, or empty array if error occurs
    */
   public async findAllNodesBeforePosition(
     textDocumentUri: string,
@@ -96,7 +97,7 @@ export class LiquidTagFinder {
     liquidKey: string,
     liquidTypes: string[],
     workspaceRoot: string,
-  ): Promise<NodeInTemplate[] | null> {
+  ): Promise<NodeInTemplate[]> {
     try {
       const { templateMap, currentFileIndex } =
         await this.getValidatedTemplateMap(
@@ -114,20 +115,21 @@ export class LiquidTagFinder {
       );
     } catch (error) {
       this.logger.error(`findAllNodesBeforePosition failed: ${error}`);
-      return null;
+      return [];
     }
   }
 
   /**
    * Find all variable definitions before a position.
    * Handles loop variable scoping (loop variables shadow outer variables).
+   * @returns Array of matching nodes, or empty array if error occurs
    */
   public async findAllVariableDefinitionsBeforePosition(
     textDocumentUri: string,
     currentRow: number,
     variableName: string,
     workspaceRoot: string,
-  ): Promise<NodeInTemplate[] | null> {
+  ): Promise<NodeInTemplate[]> {
     try {
       const { templateMap, currentFileIndex } =
         await this.getValidatedTemplateMap(
@@ -146,6 +148,13 @@ export class LiquidTagFinder {
 
       // Handle loop variable scoping in current file
       const currentSection = templateMap.partSections[currentFileIndex];
+      if (!currentSection) {
+        this.logger.error(
+          `Invalid section index: ${currentFileIndex} for template with ${templateMap.partSections.length} sections`,
+        );
+        return allDefinitions;
+      }
+
       const definitionsInCurrentSection = allDefinitions.filter(
         (def) => def.executionIndex === currentFileIndex,
       );
@@ -169,7 +178,7 @@ export class LiquidTagFinder {
       this.logger.error(
         `findAllVariableDefinitionsBeforePosition failed: ${error}`,
       );
-      return null;
+      return [];
     }
   }
 
@@ -275,13 +284,14 @@ export class LiquidTagFinder {
   /**
    * Find all variable references across the entire template.
    * Handles loop variable scoping - loop variables are scoped to their loop.
+   * @returns Array of matching nodes, or empty array if error occurs
    */
   public async findAllVariableReferencesInScope(
     textDocumentUri: string,
     currentRow: number,
     variableName: string,
     workspaceRoot: string,
-  ): Promise<NodeInTemplate[] | null> {
+  ): Promise<NodeInTemplate[]> {
     try {
       const { templateMap, currentFileIndex } =
         await this.getValidatedTemplateMap(
@@ -292,9 +302,10 @@ export class LiquidTagFinder {
 
       const currentPartSection = templateMap.partSections[currentFileIndex];
       if (!currentPartSection) {
-        throw new Error(
-          `Current part section is undefined at index ${currentFileIndex}. Template map may be corrupted.`,
+        this.logger.error(
+          `Invalid section index: ${currentFileIndex} for template with ${templateMap.partSections.length} sections`,
         );
+        return [];
       }
 
       this.logger.info(
@@ -305,7 +316,7 @@ export class LiquidTagFinder {
         currentPartSection.fileFullPath,
       );
       if (!currentFileContent) {
-        return null;
+        return [];
       }
 
       // Check if we're inside a loop with a loop variable that matches
@@ -329,7 +340,7 @@ export class LiquidTagFinder {
       return this.findGlobalScopedReferences(templateMap, variableName);
     } catch (error) {
       this.logger.error(`findAllVariableReferencesInScope failed: ${error}`);
-      return null;
+      return [];
     }
   }
 
@@ -452,13 +463,14 @@ export class LiquidTagFinder {
   /**
    * Find all translation references across the entire template.
    * Uses query service for optimized parsing.
+   * @returns Array of matching nodes, or empty array if error occurs
    */
   public async findAllTranslationReferences(
     textDocumentUri: string,
     currentRow: number,
     translationKey: string,
     workspaceRoot: string,
-  ): Promise<NodeInTemplate[] | null> {
+  ): Promise<NodeInTemplate[]> {
     try {
       const { templateMap } = await this.getValidatedTemplateMap(
         textDocumentUri,
@@ -472,7 +484,7 @@ export class LiquidTagFinder {
       );
     } catch (error) {
       this.logger.error(`findAllTranslationReferences failed: ${error}`);
-      return null;
+      return [];
     }
   }
 }

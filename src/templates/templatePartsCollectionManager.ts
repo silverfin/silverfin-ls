@@ -176,6 +176,14 @@ export class TemplatePartsCollectionManager {
       textDocumentUri,
       currentLine,
     );
+
+    if (index === -1) {
+      this.logger.warn(
+        `Current file not found in template map: ${textDocumentUri} at line ${currentLine}`,
+      );
+      return null;
+    }
+
     return {
       templateMap,
       currentFileIndex: index,

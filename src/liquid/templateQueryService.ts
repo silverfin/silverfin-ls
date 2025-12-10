@@ -36,6 +36,7 @@ export class TemplateQueryService {
    * This is the key optimization: parse 20 files instead of 222 sections.
    */
   private parseFiles(involvedFiles: string[]): Map<string, ParsedFile> {
+    const startTime = Date.now();
     const cache = new Map<string, ParsedFile>();
 
     for (const filePath of involvedFiles) {
@@ -53,8 +54,9 @@ export class TemplateQueryService {
       }
     }
 
+    const duration = Date.now() - startTime;
     this.logger.debug(
-      `Parsed ${cache.size} of ${involvedFiles.length} involved files`,
+      `Parsed ${cache.size} unique files in ${duration}ms`,
     );
     return cache;
   }

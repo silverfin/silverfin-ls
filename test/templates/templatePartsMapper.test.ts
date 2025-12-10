@@ -288,6 +288,68 @@ describe("TemplatePartsMapper - Order Validation", () => {
     });
   });
 
+  describe("File Order and Deduplication", () => {
+    it("should maintain file order by first appearance in involvedFiles", () => {
+      // account_3 has: main -> shared_part_3 -> shared_part_1 -> shared_part_3 (again) -> main (again) -> part_1 -> part_2 -> part_1 (again) -> main (again) -> shared_part_2 -> main (again)
+      const result = mapper.generateTemplateMap("accountTemplate", "account_3");
+
+      expect(result).not.toBeNull();
+      if (!result) return;
+
+      // involvedFiles should have files in order of first appearance
+      const fileBasenames = result.involvedFiles.map((f) => path.basename(f));
+
+      expect(fileBasenames).toEqual([
+        "main.liquid", // appears first at index 0
+        "shared_part_3.liquid", // appears first at index 1
+        "shared_part_1.liquid", // appears first at index 2
+        "part_1.liquid", // appears first at index 5
+        "part_2.liquid", // appears first at index 6
+        "shared_part_2.liquid", // appears first at index 9
+      ]);
+
+      // Verify each file appears only once in involvedFiles
+      const uniqueFiles = new Set(fileBasenames);
+      expect(uniqueFiles.size).toBe(fileBasenames.length);
+    });
+
+    it("should deduplicate files that appear multiple times in partSections", () => {
+      const result = mapper.generateTemplateMap("accountTemplate", "account_3");
+
+      expect(result).not.toBeNull();
+      if (!result) return;
+
+      // Count how many times each file appears in partSections
+      const fileCounts = new Map<string, number>();
+      for (const section of result.partSections) {
+        const basename = path.basename(section.fileFullPath);
+        fileCounts.set(basename, (fileCounts.get(basename) || 0) + 1);
+      }
+
+      // main.liquid appears 4 times in sections
+      expect(fileCounts.get("main.liquid")).toBe(4);
+      // shared_part_3.liquid appears 2 times in sections
+      expect(fileCounts.get("shared_part_3.liquid")).toBe(2);
+      // part_1.liquid appears 2 times in sections
+      expect(fileCounts.get("part_1.liquid")).toBe(2);
+
+      // But each should only appear once in involvedFiles
+      const involvedFileBasenames = result.involvedFiles.map((f) =>
+        path.basename(f),
+      );
+      expect(
+        involvedFileBasenames.filter((f) => f === "main.liquid").length,
+      ).toBe(1);
+      expect(
+        involvedFileBasenames.filter((f) => f === "shared_part_3.liquid")
+          .length,
+      ).toBe(1);
+      expect(
+        involvedFileBasenames.filter((f) => f === "part_1.liquid").length,
+      ).toBe(1);
+    });
+  });
+
   describe("Error Cases", () => {
     it("should return null for non-existent template", () => {
       const result = mapper.generateTemplateMap(
