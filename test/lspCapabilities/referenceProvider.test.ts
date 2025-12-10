@@ -2,21 +2,10 @@ import { ReferenceProvider } from "../../src/lspCapabilities/referenceProvider";
 import { ReferenceParams } from "vscode-languageserver/node";
 import { URI } from "vscode-uri";
 import * as path from "path";
-import * as fs from "fs";
-
-// Verify configuration is set up correctly for shared part tests
-const fixturesPath = path.resolve(__dirname, "../../fixtures/market-repo");
-const configPath = path.join(fixturesPath, "liquid-ls.json");
-const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-
-describe("Configuration Validation", () => {
-  it("should have correct configuration for shared part tests", () => {
-    expect(config).toBeDefined();
-    expect(config.currentTemplate).toBeDefined();
-    expect(config.currentTemplate.type).toBe("reconciliationText");
-    expect(config.currentTemplate.handle).toBe("reconciliation_text_2");
-  });
-});
+import {
+  fixturesPath,
+  visitTemplate,
+} from "../helpers/templateTestHelpers";
 
 describe("ReferenceProvider - Variables", () => {
   const mainFilePath = path.join(
@@ -505,6 +494,10 @@ describe("ReferenceProvider - Cross-File Translation References", () => {
   });
 
   describe("Translation References - Shared Parts", () => {
+    beforeEach(() => {
+      visitTemplate("reconciliation_texts", "reconciliation_text_2");
+    });
+
     it("should find all references to shared_translation_1 from usage in main", async () => {
       // shared_part_1.liquid line 1: {% t= "shared_translation_1" default:"Shared Translation 1" nl:"Gedeelde Vertaling 1" %}
       // main.liquid line 11: {% t "shared_translation_1" %}
@@ -538,7 +531,7 @@ describe("ReferenceProvider - Cross-File Translation References", () => {
     it("should find all references to shared_translation_1 from definition in shared_part_1", async () => {
       // shared_part_1.liquid line 1: {% t= "shared_translation_1" default:"Shared Translation 1" nl:"Gedeelde Vertaling 1" %}
       // This shared part is used by multiple reconciliation texts
-      // The currently configured template in liquid-ls.json determines which one is used
+      // The last visited template determines which one is used
       const params: ReferenceParams = {
         textDocument: { uri: URI.file(sharedPart1Path).toString() },
         position: { line: 0, character: 7 }, // On "shared_translation_1" in definition
@@ -559,8 +552,8 @@ describe("ReferenceProvider - Cross-File Translation References", () => {
       );
       expect(defInShared).toBeDefined();
 
-      // The references found will be based on the currently configured template
-      // (reconciliation_text_2 as per liquid-ls.json)
+      // The references found will be based on the last visited template
+      // (reconciliation_text_2 as set in beforeEach)
     });
   });
 });
@@ -690,6 +683,10 @@ describe("ReferenceProvider - Cross-File Variable References", () => {
   });
 
   describe("Variable References - Shared Parts", () => {
+    beforeEach(() => {
+      visitTemplate("reconciliation_texts", "reconciliation_text_2");
+    });
+
     it("should find all references to shared_var across shared part and main", async () => {
       // variable_shared.liquid line 3: {% assign shared_var = "From Shared Part" %}
       // variable_shared.liquid line 6: {{ shared_var }}
@@ -725,7 +722,7 @@ describe("ReferenceProvider - Cross-File Variable References", () => {
     it("should find all references to shared_var from definition in shared part", async () => {
       // variable_shared.liquid line 3: {% assign shared_var = "From Shared Part" %}
       // variable_shared.liquid line 6: {{ shared_var }}
-      // The currently configured template (reconciliation_text_2) uses this shared part
+      // The last visited template (reconciliation_text_2) uses this shared part
       const params: ReferenceParams = {
         textDocument: { uri: URI.file(sharedPartPath).toString() },
         position: { line: 2, character: 12 }, // On shared_var in definition
@@ -754,7 +751,7 @@ describe("ReferenceProvider - Cross-File Variable References", () => {
       );
       expect(refInShared).toBeDefined();
 
-      // Should find references in the configured template (reconciliation_text_2)
+      // Should find references in the last visited template (reconciliation_text_2)
       const refsInMain = result!.filter(
         (loc) =>
           loc.uri.includes("reconciliation_text_2") &&
@@ -766,7 +763,7 @@ describe("ReferenceProvider - Cross-File Variable References", () => {
     it("should find all references to shared_var from reference in shared part", async () => {
       // variable_shared.liquid line 3: {% assign shared_var = "From Shared Part" %}
       // variable_shared.liquid line 6: {{ shared_var }}
-      // The currently configured template (reconciliation_text_2) uses this shared part
+      // The last visited template (reconciliation_text_2) uses this shared part
       const params: ReferenceParams = {
         textDocument: { uri: URI.file(sharedPartPath).toString() },
         position: { line: 5, character: 6 }, // On {{ shared_var }} in shared part

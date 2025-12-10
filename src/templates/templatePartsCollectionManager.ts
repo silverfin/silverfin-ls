@@ -2,7 +2,7 @@ import { Logger } from "../logger";
 import { TemplatePartsMapper } from "./templatePartsMapper";
 import { URI } from "vscode-uri";
 import { parseTemplateUri } from "../utils/templateUriParser";
-import { ConfigurationReader } from "../utils/configurationReader";
+import { TemplateTracker } from "./templateTracker";
 import {
   TemplateTypes,
   TemplateParts,
@@ -31,11 +31,9 @@ export class TemplatePartsCollectionManager {
   private logger: Logger = new Logger("TemplatePartsCollectionManager");
   private loadedMaps: TemplateCollection = new Map();
   private templatePartsMapper: TemplatePartsMapper;
-  private configurationReader: ConfigurationReader;
 
   private constructor(workspaceRoot: string) {
     this.templatePartsMapper = new TemplatePartsMapper(workspaceRoot);
-    this.configurationReader = new ConfigurationReader(workspaceRoot);
   }
 
   /**
@@ -146,22 +144,23 @@ export class TemplatePartsCollectionManager {
     let templateType = templateUriInfo.templateType;
     let templateName = templateUriInfo.templateName;
 
-    // If it's a shared part, use configuration to determine context template
+    // If it's a shared part, use last visited template to determine context
     if (templateUriInfo.templateType === "sharedPart") {
-      const currentTemplate = this.configurationReader.getCurrentTemplate();
-      if (!currentTemplate) {
+      const tracker = TemplateTracker.getInstance();
+      const lastVisited = tracker.getLastVisited();
+      if (!lastVisited) {
         this.logger.warn(
-          `Shared part detected but no currentTemplate in liquid-ls.json: ${textDocumentUri}`,
+          `Shared part detected but no last visited template: ${textDocumentUri}`,
         );
         return null;
       }
 
       this.logger.info(
-        `Using configuration context for shared part: ${currentTemplate.type}/${currentTemplate.handle}`,
+        `Using last visited template context for shared part: ${lastVisited.type}/${lastVisited.handle}`,
       );
 
-      templateType = currentTemplate.type;
-      templateName = currentTemplate.handle;
+      templateType = lastVisited.type;
+      templateName = lastVisited.handle;
     }
 
     const parts = await this.getMap(templateType, templateName);

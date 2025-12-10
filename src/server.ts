@@ -21,6 +21,7 @@ import { HoverProvider } from "./lspCapabilities/hoverProvider";
 import { DefinitionProvider } from "./lspCapabilities/definitionProvider";
 import { ReferenceProvider } from "./lspCapabilities/referenceProvider";
 import { TemplatePartsCollectionManager } from "./templates/templatePartsCollectionManager";
+import { TemplateTracker } from "./templates/templateTracker";
 
 interface LSSettings {
   hover?: {
@@ -152,13 +153,16 @@ export class LiquidLanguageServer {
       );
     });
 
-    // this.connection.onDidChangeWatchedFiles((_change) => {
-    //   this.connection.console.log("File change event received");
-    // });
-    //
-    // this.documents.onDidChangeContent((change) => {
-    //   this.connection.console.log(`didChangeContent: ${change.document.uri}`);
-    // });
+    // Track last visited template from document open/change events
+    this.documents.onDidOpen((event) => {
+      const tracker = TemplateTracker.getInstance();
+      tracker.updateFromUri(event.document.uri);
+    });
+
+    this.documents.onDidChangeContent((change) => {
+      const tracker = TemplateTracker.getInstance();
+      tracker.updateFromUri(change.document.uri);
+    });
 
     this.connection.onHover(async (params): Promise<Hover | null> => {
       try {
@@ -168,6 +172,10 @@ export class LiquidLanguageServer {
         }
 
         this.logger.debug(`Hover request for: ${params.textDocument.uri}`);
+
+        // Track template on every request to handle buffer switching
+        const tracker = TemplateTracker.getInstance();
+        tracker.updateFromUri(params.textDocument.uri);
 
         const hoverProvider = new HoverProvider(params, this.workspaceRoot);
         const response = await hoverProvider.handleHoverRequest();
@@ -190,6 +198,10 @@ export class LiquidLanguageServer {
       try {
         this.logger.debug(`Definition request for: ${params.textDocument.uri}`);
 
+        // Track template on every request to handle buffer switching
+        const tracker = TemplateTracker.getInstance();
+        tracker.updateFromUri(params.textDocument.uri);
+
         const definitionProvider = new DefinitionProvider(
           params,
           this.workspaceRoot,
@@ -206,6 +218,10 @@ export class LiquidLanguageServer {
       async (params: ReferenceParams): Promise<Location[] | null> => {
         try {
           this.logger.debug(`References request for: ${params.textDocument.uri}`);
+
+          // Track template on every request to handle buffer switching
+          const tracker = TemplateTracker.getInstance();
+          tracker.updateFromUri(params.textDocument.uri);
 
           const referenceProvider = new ReferenceProvider(
             params,

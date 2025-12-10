@@ -31,18 +31,12 @@ You can disable hover documentation by setting `hover.enabled` to `false`.
 
 ### Template Context Resolution
 
-When working from shared parts, the language server needs to know which template context to use since shared parts can be included in multiple templates. Create a `liquid-ls.json` file in your workspace root:
+When working from shared parts, the language server needs to know which template context to use since shared parts can be included in multiple templates. The language server automatically tracks the last visited template file (reconciliation text, export file, or account template) and uses that as the context for shared parts.
 
-```json
-{
-  "currentTemplate": {
-    "type": "reconciliationText",
-    "handle": "my_template_handle"
-  }
-}
-```
-
-Valid template types are: `"reconciliationText"`, `"accountTemplate"`, `"exportFile"`
+**How it works:**
+- When you open, edit, or trigger any LSP feature (hover, go-to-definition, find references) on a main template file, it becomes the active context
+- When you switch to a shared part, the language server uses the last main template you interacted with
+- Works seamlessly with buffer/tab switching in Neovim and VS Code - no manual configuration needed
 
 **VS Code (settings.json):**
 
