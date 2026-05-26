@@ -1,4 +1,4 @@
-# Liquid Language Server
+# Silverfin Language Server
 
 Language Server Protocol (LSP) implementation for Silverfin Liquid templates.
 
@@ -21,15 +21,7 @@ Language Server Protocol (LSP) implementation for Silverfin Liquid templates.
 - Tracks line ranges for accurate navigation
 - Parses liquid using Tree-sitter
 
-## Configuration
-
-The language server supports the following configuration options:
-
-### Hover Documentation
-
-You can disable hover documentation by setting `hover.enabled` to `false`.
-
-### Template Context Resolution
+## Template Context Resolution
 
 When working from shared parts, the language server needs to know which template context to use since shared parts can be included in multiple templates. The language server automatically tracks the last visited template file (reconciliation text, export file, or account template) and uses that as the context for shared parts.
 
@@ -39,26 +31,37 @@ When working from shared parts, the language server needs to know which template
 - When you switch to a shared part, the language server uses the last main template you interacted with
 - Works seamlessly with buffer/tab switching in Neovim and VS Code - no manual configuration needed
 
-**VS Code (settings.json):**
+## Installation
 
-```json
-{
-  "silverfinLS": {
-    "hover": {
-      "enabled": false
-    },
-    "logLevel": "debug"
-  }
-}
+```bash
+git clone https://github.com/silverfin/silverfin-ls.git
+cd silverfin-ls
+./install.sh
 ```
 
-**Neovim:**
+This installs `silverfin-ls` globally so editors can spawn it as `silverfin-ls --stdio`.
+
+## Usage
+
+The server speaks LSP over stdio — any LSP-capable editor can use it.
+
+### VS Code
+
+Install the [Silverfin VS Code extension](https://github.com/silverfin/silverfin-vscode), which integrates `silverfin-ls`.
+
+### Neovim
+
+For Neovim 0.12+, using the built-in `vim.lsp` API (no plugins required):
 
 ```lua
-init_options = {
-  hover = {
-    enabled = false
-  },
-  logLevel = "debug"
-}
+vim.filetype.add({ extension = { liquid = "liquid" } })
+
+vim.lsp.config("silverfin_ls", {
+  cmd = { "silverfin-ls", "--stdio" },
+  filetypes = { "liquid" },
+  root_markers = { ".git" },
+})
+
+vim.lsp.enable("silverfin_ls")
 ```
+
