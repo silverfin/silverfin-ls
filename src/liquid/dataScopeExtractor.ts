@@ -185,21 +185,30 @@ export async function extractDataScope(mainPath: string): Promise<DataScope> {
   const classify = (rawPath: string) => {
     const p = resolveAlias(rawPath, aliasMap);
     let m;
-    if (
-      (m = p.match(
-        /^period\.reconciliations\.([a-z0-9_]+)\.results\.([a-z0-9_]+)/i,
-      ))
-    ) {
-      ensureCross(m[1]).results.add(m[2]);
-    } else if (
-      (m = p.match(
-        /^period\.reconciliations\.([a-z0-9_]+)\.custom\.([a-z0-9_]+)\.([a-z0-9_]+)/i,
-      ))
-    ) {
-      ensureCross(m[1]).customs.add(`${m[2]}.${m[3]}`);
-    } else if ((m = p.match(/^period\.minus_(\d+)y/i))) {
+    // Prior-period depth: any period.minus_Ny reference (recorded independently so
+    // a cross-template ref on a prior period sets BOTH the depth and the handle).
+    if ((m = p.match(/^period\.minus_(\d+)y/i))) {
       priorPeriodDepth = Math.max(priorPeriodDepth, Number(m[1]));
-    } else if ((m = p.match(/^company\.custom\.([a-z0-9_]+)\.([a-z0-9_]+)/i))) {
+    }
+    // Cross-template results/customs — current OR prior period, STATIC or DYNAMIC key.
+    // A handle referenced only via a dynamic key (`.results.[var]`) must still be
+    // registered so the whole result/custom map gets captured for it.
+    const recon = p.match(
+      /^period(?:\.minus_\d+y)?\.reconciliations\.([a-z0-9_]+)\.(results|custom)\b(.*)$/i,
+    );
+    if (recon) {
+      const cross = ensureCross(recon[1]);
+      const rest = recon[3] || "";
+      if (recon[2].toLowerCase() === "results") {
+        const tag = rest.match(/^\.([a-z0-9_]+)/i);
+        if (tag) cross.results.add(tag[1]);
+      } else {
+        const kv = rest.match(/^\.([a-z0-9_]+)\.([a-z0-9_]+)/i);
+        if (kv) cross.customs.add(`${kv[1]}.${kv[2]}`);
+      }
+      return;
+    }
+    if ((m = p.match(/^company\.custom\.([a-z0-9_]+)\.([a-z0-9_]+)/i))) {
       companyCustom.add(`${m[1]}.${m[2]}`);
     } else if ((m = p.match(/^company\.([a-z_][a-z0-9_]*)/i))) {
       if (m[1] !== "custom") companyStandard.add(m[1]);
