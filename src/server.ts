@@ -24,6 +24,7 @@ import { DefinitionProvider } from "./lspCapabilities/definitionProvider";
 import { ReferenceProvider } from "./lspCapabilities/referenceProvider";
 import { TemplatePartsCollectionManager } from "./templates/templatePartsCollectionManager";
 import { TemplateTracker } from "./templates/templateTracker";
+import { findMarketRepoRoot } from "./utils/marketRepoRoot";
 
 interface LSSettings {
   hover?: {
@@ -197,6 +198,11 @@ export class LiquidLanguageServer {
     });
   }
 
+  private resolveMarketRoot(documentUri: string): string | null {
+    const filePath = URI.parse(documentUri).fsPath;
+    return findMarketRepoRoot(filePath) ?? this.workspaceRoot;
+  }
+
   private setupOnHoverHandler(): void {
     this.connection.onHover(async (params): Promise<Hover | null> => {
       try {
@@ -213,7 +219,8 @@ export class LiquidLanguageServer {
         const tracker = TemplateTracker.getInstance();
         tracker.updateFromUri(params.textDocument.uri);
 
-        const hoverProvider = new HoverProvider(params, this.workspaceRoot);
+        const marketRoot = this.resolveMarketRoot(params.textDocument.uri);
+        const hoverProvider = new HoverProvider(params, marketRoot);
         const response = await hoverProvider.handleHoverRequest();
         if (response) {
           return {
@@ -240,9 +247,10 @@ export class LiquidLanguageServer {
         const tracker = TemplateTracker.getInstance();
         tracker.updateFromUri(params.textDocument.uri);
 
+        const marketRoot = this.resolveMarketRoot(params.textDocument.uri);
         const definitionProvider = new DefinitionProvider(
           params,
-          this.workspaceRoot,
+          marketRoot,
         );
         const response = await definitionProvider.handleDefinitionRequest();
         return response;
@@ -265,9 +273,10 @@ export class LiquidLanguageServer {
           const tracker = TemplateTracker.getInstance();
           tracker.updateFromUri(params.textDocument.uri);
 
+          const marketRoot = this.resolveMarketRoot(params.textDocument.uri);
           const referenceProvider = new ReferenceProvider(
             params,
-            this.workspaceRoot,
+            marketRoot,
           );
           const response = await referenceProvider.handleReferenceRequest();
           return response;
@@ -283,14 +292,13 @@ export class LiquidLanguageServer {
     // Regenerate template maps when liquid files are saved
     this.documents.onDidSave(async (change) => {
       const uri = change.document.uri;
-      if (uri.endsWith(".liquid") && this.workspaceRoot) {
+      const marketRoot = this.resolveMarketRoot(uri);
+      if (uri.endsWith(".liquid") && marketRoot) {
         this.logger.debug(
           `Liquid file saved, regenerating template map: ${uri}`,
         );
         try {
-          const manager = TemplatePartsCollectionManager.getInstance(
-            this.workspaceRoot,
-          );
+          const manager = TemplatePartsCollectionManager.getInstance(marketRoot);
           await manager.regenerateFromUri(uri);
         } catch (error) {
           this.logger.error(`Failed to regenerate template map: ${error}`);
