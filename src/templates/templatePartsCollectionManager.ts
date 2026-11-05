@@ -34,8 +34,10 @@ export class TemplatePartsCollectionManager {
   private logger: Logger = new Logger("TemplatePartsCollectionManager");
   private loadedMaps: TemplateCollection = new Map();
   private templatePartsMapper: TemplatePartsMapper;
+  private workspaceRoot: string;
 
   private constructor(workspaceRoot: string) {
+    this.workspaceRoot = workspaceRoot;
     this.templatePartsMapper = new TemplatePartsMapper(workspaceRoot);
   }
 
@@ -143,10 +145,10 @@ export class TemplatePartsCollectionManager {
     // If it's a shared part, use last visited template to determine context
     if (templateUriInfo.templateType === "sharedPart") {
       const tracker = TemplateTracker.getInstance();
-      const lastVisited = tracker.getLastVisited();
+      const lastVisited = tracker.getLastVisited(this.workspaceRoot);
       if (!lastVisited) {
         this.logger.warn(
-          `Shared part detected but no last visited template: ${textDocumentUri}`,
+          `Shared part detected but no last visited template in this market repo: ${textDocumentUri}`,
         );
         return null;
       }
