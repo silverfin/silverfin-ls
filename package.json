@@ -1,6 +1,6 @@
 {
   "name": "silverfin-ls",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "bin": {
     "silverfin-ls": "./out/index.js"
   },

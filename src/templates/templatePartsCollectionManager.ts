@@ -30,33 +30,31 @@ import {
  * await manager.loadMap('accountTemplate', 'invoice_template');
  */
 export class TemplatePartsCollectionManager {
-  private static instance: TemplatePartsCollectionManager | null = null;
+  private static instances = new Map<string, TemplatePartsCollectionManager>();
   private logger: Logger = new Logger("TemplatePartsCollectionManager");
   private loadedMaps: TemplateCollection = new Map();
   private templatePartsMapper: TemplatePartsMapper;
+  private workspaceRoot: string;
 
   private constructor(workspaceRoot: string) {
+    this.workspaceRoot = workspaceRoot;
     this.templatePartsMapper = new TemplatePartsMapper(workspaceRoot);
   }
 
   /**
-   * Gets the singleton instance of TemplatePartsCollectionManager
-   * @param workspaceRoot The workspace root path (required on first call)
-   * @returns The singleton instance
+   * Gets a TemplatePartsCollectionManager for the given market repo root.
+   * One instance is cached per root path (supports multiple worktrees/repos).
    */
   public static getInstance(
-    workspaceRoot?: string,
+    workspaceRoot: string,
   ): TemplatePartsCollectionManager {
-    if (!TemplatePartsCollectionManager.instance) {
-      if (!workspaceRoot) {
-        throw new Error(
-          "workspaceRoot is required when creating the first instance",
-        );
-      }
-      TemplatePartsCollectionManager.instance =
-        new TemplatePartsCollectionManager(workspaceRoot);
+    if (!TemplatePartsCollectionManager.instances.has(workspaceRoot)) {
+      TemplatePartsCollectionManager.instances.set(
+        workspaceRoot,
+        new TemplatePartsCollectionManager(workspaceRoot),
+      );
     }
-    return TemplatePartsCollectionManager.instance;
+    return TemplatePartsCollectionManager.instances.get(workspaceRoot)!;
   }
 
   /**
@@ -147,10 +145,10 @@ export class TemplatePartsCollectionManager {
     // If it's a shared part, use last visited template to determine context
     if (templateUriInfo.templateType === "sharedPart") {
       const tracker = TemplateTracker.getInstance();
-      const lastVisited = tracker.getLastVisited();
+      const lastVisited = tracker.getLastVisited(this.workspaceRoot);
       if (!lastVisited) {
         this.logger.warn(
-          `Shared part detected but no last visited template: ${textDocumentUri}`,
+          `Shared part detected but no last visited template in this market repo: ${textDocumentUri}`,
         );
         return null;
       }

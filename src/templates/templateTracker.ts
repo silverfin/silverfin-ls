@@ -1,10 +1,13 @@
+import { URI } from "vscode-uri";
 import { Logger } from "../logger";
+import { findMarketRepoRoot } from "../utils/marketRepoRoot";
 import { parseTemplateUri } from "../utils/templateUriParser";
 import { MainTemplateTypes } from "./types";
 
 interface LastVisitedTemplate {
   type: MainTemplateTypes;
   handle: string;
+  marketRoot: string | null;
 }
 
 /**
@@ -43,6 +46,7 @@ export class TemplateTracker {
     this.lastVisitedTemplate = {
       type: templateUriInfo.templateType,
       handle: templateUriInfo.templateName,
+      marketRoot: findMarketRepoRoot(URI.parse(textDocumentUri).fsPath),
     };
 
     this.logger.debug(
@@ -50,8 +54,16 @@ export class TemplateTracker {
     );
   }
 
-  getLastVisited(): LastVisitedTemplate | null {
+  /**
+   * Returns the last visited template.
+   * When a marketRoot is given, a template from a different market repo is ignored.
+   */
+  getLastVisited(marketRoot?: string): LastVisitedTemplate | null {
     if (!this.lastVisitedTemplate) {
+      return null;
+    }
+    const trackedRoot = this.lastVisitedTemplate.marketRoot;
+    if (marketRoot && trackedRoot && trackedRoot !== marketRoot) {
       return null;
     }
     return { ...this.lastVisitedTemplate };

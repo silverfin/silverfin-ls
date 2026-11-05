@@ -381,4 +381,20 @@ describe("TemplateTracker", () => {
       expect(tracker.getLastVisited()!.handle).toBe("reconciliation_text_2");
     });
   });
+
+  describe("Multiple market repos", () => {
+    it("should return the last visited template for the same market repo", () => {
+      const result = tracker.getLastVisited(fixturesPath);
+
+      expect(result).not.toBeNull();
+      expect(result!.handle).toBe("reconciliation_text_1");
+      expect(result!.marketRoot).toBe(fixturesPath);
+    });
+
+    it("should ignore the last visited template from another market repo", () => {
+      const otherMarketRoot = path.resolve(fixturesPath, "../nl_market");
+
+      expect(tracker.getLastVisited(otherMarketRoot)).toBeNull();
+    });
+  });
 });
