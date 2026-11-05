@@ -292,17 +292,22 @@ export class LiquidLanguageServer {
     // Regenerate template maps when liquid files are saved
     this.documents.onDidSave(async (change) => {
       const uri = change.document.uri;
-      const marketRoot = this.resolveMarketRoot(uri);
-      if (uri.endsWith(".liquid") && marketRoot) {
+      if (!uri.endsWith(".liquid")) {
+        return;
+      }
+
+      try {
+        const marketRoot = this.resolveMarketRoot(uri);
+        if (!marketRoot) {
+          return;
+        }
         this.logger.debug(
           `Liquid file saved, regenerating template map: ${uri}`,
         );
-        try {
-          const manager = TemplatePartsCollectionManager.getInstance(marketRoot);
-          await manager.regenerateFromUri(uri);
-        } catch (error) {
-          this.logger.error(`Failed to regenerate template map: ${error}`);
-        }
+        const manager = TemplatePartsCollectionManager.getInstance(marketRoot);
+        await manager.regenerateFromUri(uri);
+      } catch (error) {
+        this.logger.error(`Failed to regenerate template map: ${error}`);
       }
     });
   }
